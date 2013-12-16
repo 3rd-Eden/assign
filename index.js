@@ -63,7 +63,7 @@ Assignment.prototype.reduce = function reduce(fn, initial) {
   this.flow.push(fn);
 
   if (arguments.length === 2) {
-    this.initial = initial;
+    this.result = initial;
   }
 
   return this;
