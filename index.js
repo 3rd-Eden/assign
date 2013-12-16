@@ -1,15 +1,15 @@
 'use strict';
 
-//
-// Placeholder.
-//
-function noop() { /* You just wasted a second reading this comment, your welcome */ }
+function noop() {
+  /* You just wasted a second reading this comment, your welcome */
+}
 
 /**
  * Data processor. Map/Reduce as promise like api. *buzzword*
  *
  * @constructor
  * @param {Mixed} context A reference to it self.
+ * @param {Function} fn The callback function when data is completed.
  * @api private
  */
 function Assignment(context, fn) {
@@ -20,12 +20,14 @@ function Assignment(context, fn) {
   // ```
   //
   this.fn = fn || noop;
-  this.length = 0;
   this.and = context;
   this.result = null;
+  this.length = 0;
   this.rows = [];
   this.flow = [];
 }
+
+Assignment.prototype.__proto__ = require('stream').prototype;
 
 /**
  * Start a map operation on the received data. This map operation will most
@@ -86,7 +88,7 @@ Assignment.prototype.reduce = function reduce(fn, initial) {
  * @returns {This}
  * @api public
  */
-Assignment.prototype.emit = function emit(fn) {
+Assignment.prototype.emits = function emits(fn) {
   fn.assignment = 'emit';
   this.flow.push(fn);
 
@@ -99,21 +101,22 @@ Assignment.prototype.emit = function emit(fn) {
  * processed instead.
  *
  * ```js
- * assignment.consume([{}]);
- * assignment.consume([{}], true);
+ * assignment.write([{}]);
+ * assignment.write([{}], true);
  * ```
  *
  * @param {Mixed} data The data we need to consume and process.
  * @param {Boolean} end This was the last fragment of data we will receive.
- * @returns {This}
+ * @returns {Boolean}
  * @api private
  */
-Assignment.prototype.consume = function consume(data, end) {
-  data = Array.isArray(data) ? data : [data];
-  if (!this.flow) return; // We're already destroyed.
+Assignment.prototype.write = function write(data, end) {
+  if (!this.flow) return false;
 
   var assignment = this
     , row;
+
+  data = Array.isArray(data) ? data : [data];
 
   /**
    * Iterate over the data structure.
@@ -156,10 +159,33 @@ Assignment.prototype.consume = function consume(data, end) {
     this.length++;
   }
 
-  if (end) {
-    this.fn(undefined, this.result || this.rows);
+  if (end === true) {
+    this.fn(undefined, this.result || this.length === 1 ? this.rows[0] : this.rows);
     this.destroy();
   }
+
+  return true;
+};
+
+/**
+ * End the assignment.
+ *
+ * @param {Mixed} data The data to consume.
+ * @api private
+ */
+Assignment.prototype.end = function end(data) {
+  return this.write(data, true);
+};
+
+/**
+ * Once all operations are done, call this callback.
+ *
+ * @param {Function} fn The callback that is called once the assignment is done.
+ * @returns {This}
+ * @api public
+ */
+Assignment.prototype.finally = function final(fn) {
+  this.fn = fn || this.fn;
 
   return this;
 };
