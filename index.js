@@ -1,7 +1,7 @@
 'use strict';
 
 function noop() {
-  /* You just wasted a second reading this comment, your welcome */
+  /* You just wasted a second reading this comment, you're welcome */
 }
 
 /**
