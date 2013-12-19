@@ -160,7 +160,7 @@ Assignment.prototype.write = function write(data, end) {
   }
 
   if (end === true) {
-    this.fn(undefined, this.result || this.length === 1 ? this.rows[0] : this.rows);
+    this.fn(undefined, this.result || (this.length === 1 ? this.rows[0] : this.rows));
     this.destroy();
   }
 
