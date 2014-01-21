@@ -47,6 +47,8 @@ Assignment.prototype.__proto__ = require('stream').prototype;
  * @api public
  */
 Assignment.prototype.map = function map(fn) {
+  if (!this.flow) return this;
+
   fn.assignment = 'map';
   this.flow.push(fn);
 
@@ -61,6 +63,8 @@ Assignment.prototype.map = function map(fn) {
  * @api public
  */
 Assignment.prototype.reduce = function reduce(fn, initial) {
+  if (!this.flow) return this;
+
   fn.assignment = 'reduce';
   this.flow.push(fn);
 
@@ -89,6 +93,8 @@ Assignment.prototype.reduce = function reduce(fn, initial) {
  * @api public
  */
 Assignment.prototype.emits = function emits(fn) {
+  if (!this.flow) return this;
+
   fn.assignment = 'emit';
   this.flow.push(fn);
 
