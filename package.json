@@ -14,5 +14,8 @@
     "brainfart"
   ],
   "author": "Arnout Kazemier",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "fusing": "0.0.x"
+  }
 }

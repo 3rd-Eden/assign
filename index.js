@@ -1,5 +1,7 @@
 'use strict';
 
+var fuse = require('fusing');
+
 function noop() {
   /* You just wasted a second reading this comment, you're welcome */
 }
@@ -13,21 +15,65 @@ function noop() {
  * @api private
  */
 function Assignment(context, fn) {
-  //
-  // the `.and` allows for human readable chaining of code;
-  // ```js
-  // foo.bar().map().and.baz().reduce();
-  // ```
-  //
-  this.fn = fn || noop;
-  this.and = context;
-  this.result = null;
-  this.length = 0;
-  this.rows = [];
-  this.flow = [];
+  if ('function' === typeof context) {
+    fn = context;
+    context = null;
+  }
+
+  var writable = Assignment.predefine(this, Assignment.predefine.WRITABLE)
+    , readable = Assignment.predefine(this);
+
+  readable('and', context || this);
+  writable('fn', fn || noop);
+  writable('_async', false);
 }
 
-Assignment.prototype.__proto__ = require('stream').prototype;
+fuse(Assignment, require('stream'));
+
+/**
+ * The amount of rows we've processed so far.
+ *
+ * @type {Number}
+ * @public
+ */
+Assignment.writable('length', 0);
+
+/**
+ * Stores the reduced result.
+ *
+ * @type {Mixed}
+ * @private
+ */
+Assignment.writable('result', null);
+
+/**
+ * Reference to the rows we've or are processing.
+ *
+ * @type {Array}
+ * @private
+ */
+Assignment.writable('rows', []);
+
+/**
+ * Our actual internal structure which contains the map/reduce/emit functions.
+ *
+ * @type {Array}
+ * @private
+ */
+Assignment.writable('flow', []);
+
+/**
+ * Mark the next function that we're adding as an async processing function.
+ *
+ * @type {Assignment}
+ * @public
+ */
+Assignment.writable('async', {
+  get: function get() {
+    this._async = true;
+    return this;
+  }
+}, true);
 
 /**
  * Start a map operation on the received data. This map operation will most
@@ -46,14 +92,16 @@ Assignment.prototype.__proto__ = require('stream').prototype;
  * @returns {This}
  * @api public
  */
-Assignment.prototype.map = function map(fn) {
+Assignment.readable('map', function map(fn) {
   if (!this.flow) return this;
 
-  fn.assignment = 'map';
-  this.flow.push(fn);
+  fn.async = this._async;   // Should we do this async.
+  fn.assignment = 'map';    // Process type.
+  this.flow.push(fn);       // Store.
+  this._async = false;      // Reset.
 
   return this;
-};
+});
 
 /**
  * Reduce the results to a single value.
@@ -62,18 +110,20 @@ Assignment.prototype.map = function map(fn) {
  * @returns {This}
  * @api public
  */
-Assignment.prototype.reduce = function reduce(fn, initial) {
+Assignment.readable('reduce', function reduce(fn, initial) {
   if (!this.flow) return this;
 
-  fn.assignment = 'reduce';
-  this.flow.push(fn);
+  fn.async = this._async;   // Should we do this async.
+  fn.assignment = 'reduce'; // Process type.
+  this.flow.push(fn);       // Store.
+  this._async = false;      // Reset.
 
   if (arguments.length === 2) {
     this.result = initial;
   }
 
   return this;
-};
+});
 
 /**
  * The emit allows you to split up the data in to multiple rows that will be
@@ -92,14 +142,16 @@ Assignment.prototype.reduce = function reduce(fn, initial) {
  * @returns {This}
  * @api public
  */
-Assignment.prototype.emits = function emits(fn) {
+Assignment.readable('emits', function emits(fn) {
   if (!this.flow) return this;
 
-  fn.assignment = 'emit';
-  this.flow.push(fn);
+  fn.async = this._async;   // Should we do this async.
+  fn.assignment = 'emits';  // Process type.
+  this.flow.push(fn);       // Store.
+  this._async = false;      // Reset.
 
   return this;
-};
+});
 
 /**
  * We've received a new chunk of data that we should process. If we don't
@@ -116,13 +168,15 @@ Assignment.prototype.emits = function emits(fn) {
  * @returns {Boolean}
  * @api private
  */
-Assignment.prototype.write = function write(data, end) {
+Assignment.readable('write', function write(data, end) {
   if (!this.flow) return false;
 
   var assignment = this
     , row;
 
-  data = Array.isArray(data) ? data : [data];
+  data = !Array.isArray(data)
+    ? [data]
+    : data;
 
   /**
    * Iterate over the data structure.
@@ -171,7 +225,7 @@ Assignment.prototype.write = function write(data, end) {
   }
 
   return true;
-};
+});
 
 /**
  * End the assignment.
@@ -179,9 +233,9 @@ Assignment.prototype.write = function write(data, end) {
  * @param {Mixed} data The data to consume.
  * @api private
  */
-Assignment.prototype.end = function end(data) {
+Assignment.readable('end', function end(data) {
   return this.write(data, true);
-};
+});
 
 /**
  * Once all operations are done, call this callback.
@@ -190,11 +244,11 @@ Assignment.prototype.end = function end(data) {
  * @returns {This}
  * @api public
  */
-Assignment.prototype.finally = function final(fn) {
+Assignment.readable('finally', function final(fn) {
   this.fn = fn || this.fn;
 
   return this;
-};
+});
 
 /**
  * Destroy the assignment. We're done with processing the data.
@@ -202,11 +256,11 @@ Assignment.prototype.finally = function final(fn) {
  * @param {Error} err We're destroyed because we've received an error.
  * @api private
  */
-Assignment.prototype.destroy = function destroy(err) {
+Assignment.readable('destroy', function destroy(err) {
   if (err) this.fn(err);
 
   this.and = this.flow = this.fn = this.rows = null;
-};
+});
 
 //
 // Expose the module.
