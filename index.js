@@ -67,15 +67,32 @@ Assignment.writable('async', {
  * @returns {This}
  * @api public
  */
-Assignment.readable('map', function map(fn) {
-  if (!this.flow) return this;
+Assignment.readable('map', function setmap(fn, options) {
+  var assign = this;
 
-  fn.async = this._async;   // Should we do this async.
-  fn.assignment = 'map';    // Process type.
-  this.flow.push(fn);       // Store.
-  this._async = false;      // Reset.
+  if (!assign.flow) return assign;
 
-  return this;
+  /**
+   * Simple wrapper around the actual mapping function that processes the
+   * content.
+   *
+   * @param {Mixed} row The data to process.
+   * @param {Function} next Call the next flow.
+   * @param {Function} done Fuck it, we're done.
+   * @api private
+   */
+  function map(row, next, done) {
+    if (!map.async) return next(undefined, fn(row, assign.length));
+
+    fn(row, assign.length, next);
+  }
+
+  map.async = assign._async;  // Should we do this async.
+  map.assignment = 'map';     // Process type.
+  assign.flow.push(map);      // Store.
+  assign._async = false;      // Reset.
+
+  return assign;
 });
 
 /**
@@ -85,19 +102,42 @@ Assignment.readable('map', function map(fn) {
  * @returns {This}
  * @api public
  */
-Assignment.readable('reduce', function reduce(fn, initial) {
-  if (!this.flow) return this;
+Assignment.readable('reduce', function setreduce(fn, initial) {
+  var assign = this;
 
-  fn.async = this._async;   // Should we do this async.
-  fn.assignment = 'reduce'; // Process type.
-  this.flow.push(fn);       // Store.
-  this._async = false;      // Reset.
+  if (!assign.flow) return assign;
 
-  if (arguments.length === 2) {
-    this.result = initial;
+  /**
+   * Simple wrapper around the actual reducing function that processes the
+   * content.
+   *
+   * @param {Mixed} row The data to process.
+   * @param {Function} next Call the next flow.
+   * @param {Function} done Fuck it, we're done.
+   * @api private
+   */
+  function reduce(row, next, done) {
+    if (!reduce.async) {
+      assign.result = fn(assign.result, row, assign.length);
+      return next();
+    }
+
+    fn(assign.result, row, assign.length, function processed(err, data) {
+      assign.result = data;
+      next(err);
+    });
   }
 
-  return this;
+  reduce.async = assign._async; // Should we do this async.
+  reduce.assignment = 'reduce'; // Process type.
+  assign.flow.push(fn);         // Store.
+  assign._async = false;        // Reset.
+
+  if (arguments.length === 2) {
+    assign.result = initial;
+  }
+
+  return assign;
 });
 
 /**
@@ -117,15 +157,48 @@ Assignment.readable('reduce', function reduce(fn, initial) {
  * @returns {This}
  * @api public
  */
-Assignment.readable('emits', function emits(fn) {
-  if (!this.flow) return this;
+Assignment.readable('emits', function setemits(fn) {
+  var assign = this;
 
-  fn.async = this._async;   // Should we do this async.
-  fn.assignment = 'emits';  // Process type.
-  this.flow.push(fn);       // Store.
-  this._async = false;      // Reset.
+  if (!assign.flow) return assign;
 
-  return this;
+  /**
+   * Push new data to the stack.
+   *
+   * @api private
+   */
+  function push() {
+    assign.write([].slice.call(arguments, 0), { skip: 'emits' });
+    return push;
+  }
+
+  /**
+   * Simple wrapper around the actual mapping function that processes the
+   * content.
+   *
+   * @param {Mixed} row The data to process.
+   * @param {Function} next Call the next flow.
+   * @param {Function} done Fuck it, we're done.
+   * @api private
+   */
+  function emits(row, next, done) {
+    if (!emits.async) {
+      if (fn(row, push) === false) return done();
+      return next();
+    }
+
+    fn(row, push, function done(err, moar) {
+      if (err) return next(err);
+      if (moar === false) return done();
+    });
+  }
+
+  emits.async = assign._async; // Should we do this async.
+  emits.assignment = 'emits';  // Process type.
+  assign.flow.push(fn);        // Store.
+  assign._async = false;       // Reset.
+
+  return assign;
 });
 
 /**
