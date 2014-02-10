@@ -212,65 +212,42 @@ Assignment.readable('emits', function setemits(fn) {
  * ```
  *
  * @param {Mixed} data The data we need to consume and process.
- * @param {Boolean} end This was the last fragment of data we will receive.
+ * @param {Boolean} options This was the last fragment of data we will receive.
  * @returns {Boolean}
  * @api private
  */
-Assignment.readable('write', function write(data, end) {
+Assignment.readable('write', function write(data, options) {
+  //
+  // We cannot process the information when we don't have a flow anymore. This
+  // is an indication that we've been fully destroyed and all writes should be
+  // ignored. So simply returning false should be sufficient.
+  //
   if (!this.flow) return false;
+  options = options || {};
 
-  var assignment = this
-    , row;
+  var assign = this;
 
-  data = !Array.isArray(data)
-    ? [data]
-    : data;
+  assign.each(data, function iterate(row, index, done) {
+    assign.length++; // Gives us some intel on how many rows we've processed
 
-  /**
-   * Iterate over the data structure.
-   *
-   * @param {Function} flow The current flow that needs to be executed.
-   * @api private
-   */
-  function iterate(flow) {
-    switch (flow.assignment) {
-      case 'emit':
-        if (flow(row, data.push.bind(data)) === false) {
-          return false;
-        }
-      break;
+    assign.each(assign.flow, function flowing(fn, index, next) {
+      if (options.skip === fn.assignment) return next();
 
-      case 'reduce':
-        assignment.result = flow(assignment.result, row, assignment.length);
-      break;
+      fn(row, next, function processed(err, data) {
+        if (err) return done(err);
+        row = data;
 
-      case 'map':
-        row = flow(row, assignment.length);
-      break;
+        next();
+      });
+    }, function done(err) {
+      if (err) return assign.destroy(err);
 
-      default:
-        flow(row);
-    }
-
-    return true;
-  }
-
-  //
-  // Iterate over the data, we need to remove items from the `data` array as the
-  // `emit` method can add more items to the data feed.
-  //
-  while (row = data.shift()) {
-    if (this.flow.every(iterate) && !this.result) {
-      this.rows.push(row);
-    }
-
-    this.length++;
-  }
-
-  if (end === true) {
-    this.fn(undefined, this.result || (this.length === 1 ? this.rows[0] : this.rows));
-    this.destroy();
-  }
+      if (options.end) {
+        assign.fn(err, assign.result || assign.rows);
+        return assign.destroy();
+      }
+    });
+  });
 
   return true;
 });
@@ -282,7 +259,44 @@ Assignment.readable('write', function write(data, end) {
  * @api private
  */
 Assignment.readable('end', function end(data) {
-  return this.write(data, true);
+  return this.write(data, {
+    end: true
+  });
+});
+
+/**
+ * Asynchrounous forEach. Because iterating is for bad-asses.
+ *
+ * @param {Array} data
+ * @param {Function} iterator
+ * @param {Function} completion
+ * @api private
+ */
+Assignment.readable('each', function each(data, iterator, done) {
+  var mapper = []
+    , index = 0;
+
+  done = done || noop;
+
+  //
+  // Our asynciterator3000, which asyncly iterates an.. Array! It's amazing,
+  // it's fantastic, it's the most amazing line of code I've written all day.
+  // HUZZAY, HUZZZAAY.
+  //
+  (function next(data) {
+    if (!data || !data.length) {
+      done(undefined, mapper);
+      return mapper.length = 0;
+    }
+
+    iterator(data.shift(), ++index, function iterators(err, row) {
+      if (err) return done(err);
+      mapper.push(row);
+      next(data);
+    });
+  }(Array.isArray(data) ? data : [ data ]));
+
+  return this;
 });
 
 /**
