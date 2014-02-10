@@ -15,6 +15,8 @@ function noop() {
  * @api private
  */
 function Assignment(context, fn) {
+  if (!(this instanceof Assignment)) return new Assignment(context, fn);
+
   if ('function' === typeof context) {
     fn = context;
     context = null;
@@ -28,7 +30,9 @@ function Assignment(context, fn) {
   writable('_async', false);
 }
 
-fuse(Assignment, require('stream'));
+fuse(Assignment, require('stream'), {
+  defaults: false
+});
 
 /**
  * The amount of rows we've processed so far.
