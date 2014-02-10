@@ -22,49 +22,20 @@ function Assignment(context, fn) {
     context = null;
   }
 
-  var writable = Assignment.predefine(this, Assignment.predefine.WRITABLE)
-    , readable = Assignment.predefine(this);
+  var writable = Assignment.predefine(this, Assignment.predefine.WRITABLE);
 
-  readable('and', context || this);
-  writable('fn', fn || noop);
-  writable('_async', false);
+  writable('and', context || this); // Chaining.
+  writable('fn', fn || noop);       // Completion callback.
+  writable('_async', false);        // Async processing indicator.
+  writable('length', 0);            // The amount of rows we've processed so far.
+  writable('result', null);         // Stores the reduced result.
+  writable('rows', []);             // Reference to the processed data.
+  writable('flow', []);             // Our internal flow/parse structure.
 }
 
 fuse(Assignment, require('stream'), {
   defaults: false
 });
-
-/**
- * The amount of rows we've processed so far.
- *
- * @type {Number}
- * @public
- */
-Assignment.writable('length', 0);
-
-/**
- * Stores the reduced result.
- *
- * @type {Mixed}
- * @private
- */
-Assignment.writable('result', null);
-
-/**
- * Reference to the rows we've or are processing.
- *
- * @type {Array}
- * @private
- */
-Assignment.writable('rows', []);
-
-/**
- * Our actual internal structure which contains the map/reduce/emit functions.
- *
- * @type {Array}
- * @private
- */
-Assignment.writable('flow', []);
 
 /**
  * Mark the next function that we're adding as an async processing function.
