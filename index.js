@@ -1,6 +1,7 @@
 'use strict';
 
-var fuse = require('fusing');
+var slice = Array.prototype.call
+  , fuse = require('fusing');
 
 function noop() {
   /* You just wasted a second reading this comment, you're welcome */
@@ -59,7 +60,7 @@ Assignment.writable('async', {
  *  return {
  *    id: row.id,
  *    hash: crypto.createHash('md5').update(row.data).digest('hex')
- *  }:
+ *  };
  * });
  * ```
  *
@@ -84,7 +85,8 @@ Assignment.readable('map', function setmap(fn, options) {
   function map(row, next, done) {
     if (!map.async) return next(undefined, fn(row, assign.length));
 
-    fn(row, assign.length, next);
+    if (fn.length === 2) fn(row, next);
+    else fn(row, assign.length, next);
   }
 
   map.async = assign._async;  // Should we do this async.
@@ -122,10 +124,13 @@ Assignment.readable('reduce', function setreduce(fn, initial) {
       return next();
     }
 
-    fn(assign.result, row, assign.length, function processed(err, data) {
+    function processed(err, data) {
       assign.result = data;
       next(err);
-    });
+    }
+
+    if (fn.length === 3) fn(assign.result, row, processed);
+    else fn(assign.result, row, assign.length, processed);
   }
 
   reduce.async = assign._async; // Should we do this async.
@@ -145,7 +150,7 @@ Assignment.readable('reduce', function setreduce(fn, initial) {
  * processed by the assignment flow.
  *
  * ```js
- * assignment.emit(function scan(row, emit) {
+ * assignment.emits(function scan(row, emit) {
  *  if (row.foo) emit(row.foo);
  *  if (row.bar) emit(row.bar);
  *
@@ -168,7 +173,7 @@ Assignment.readable('emits', function setemits(fn) {
    * @api private
    */
   function push() {
-    assign.write([].slice.call(arguments, 0), { skip: 'emits' });
+    assign.write(slice.call(arguments, 0), { skip: 'emits' });
     return push;
   }
 
@@ -187,10 +192,13 @@ Assignment.readable('emits', function setemits(fn) {
       return next();
     }
 
-    fn(row, push, function done(err, moar) {
+    function processed(err, moar) {
       if (err) return next(err);
       if (moar === false) return done();
-    });
+    }
+
+    if (fn.length === 3) fn(row, push, processed);
+    else fn(row, push, assign.length, processed);
   }
 
   emits.async = assign._async; // Should we do this async.
