@@ -292,7 +292,7 @@ Assignment.readable('each', function each(data, iterator, done) {
       return mapper.length = 0;
     }
 
-    iterator(data.shift(), ++index, function iterators(err, row) {
+    iterator(data.shift(), index++, function iterators(err, row) {
       if (err) return done(err);
 
       mapper.push(row);

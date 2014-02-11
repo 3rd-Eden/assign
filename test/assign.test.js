@@ -84,5 +84,46 @@ describe('Assign', function () {
         end: true
       });
     });
+
+    describe('.async', function () {
+      it('processes the results async', function (done) {
+        var assign = new Assignment(function (err, data) {
+          expect(data[0]).to.equal('bar');
+          done(err);
+        });
+
+        assign.async.map(function (data, index, next) {
+          setTimeout(function () {
+            next(undefined, data.foo);
+          }, 10);
+        });
+
+        assign.write({ foo: 'bar'}, {
+          end: true
+        });
+      });
+
+      it('processes and combines data in order', function (done) {
+        var assign = new Assignment(function (err, data) {
+          expect(data[0]).to.equal(0);
+          expect(data[1]).to.equal(1);
+
+          done(err);
+        });
+
+        assign.async.map(function (data, index, next) {
+          if (1 === index) return setTimeout(function () {
+            next(undefined, index);
+          }, 100);
+
+          next(undefined, index);
+        });
+
+        assign.write('foo');
+        assign.write({foo: 'bar' }, {
+          end: true
+        });
+      });
+    });
   });
 });
