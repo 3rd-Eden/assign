@@ -58,7 +58,9 @@ describe('Assign', function () {
       });
 
       assign.write({ foo: 'bar' });
-      assign.write({ foo: 'barmitswa' }, true);
+      assign.write({ foo: 'barmitswa' }, {
+        end: true
+      });
     });
 
     it('allows multiple map sequences', function (done) {
@@ -78,7 +80,9 @@ describe('Assign', function () {
       });
 
       assign.write({ foo: 'bar' });
-      assign.write({ foo: 'barmitswa' }, true);
+      assign.write({ foo: 'barmitswa' }, {
+        end: true
+      });
     });
   });
 });

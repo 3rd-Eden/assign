@@ -233,20 +233,23 @@ Assignment.readable('write', function write(data, options) {
     assign.each(assign.flow, function flowing(fn, index, next) {
       if (options.skip === fn.assignment) return next();
 
-      fn(row, next, function processed(err, data) {
+      fn(row, function processed(err, data) {
         if (err) return done(err);
-        row = data;
+        if (arguments.length === 2) row = data;
 
         next();
-      });
-    }, function done(err) {
-      if (err) return assign.destroy(err);
-
-      if (options.end) {
-        assign.fn(err, assign.result || assign.rows);
-        return assign.destroy();
-      }
+      }, done);
+    }, function finished(err) {
+      assign.rows.push(row);
+      done(err);
     });
+  }, function finished(err) {
+    if (err) return assign.destroy(err);
+
+    if (options.end) {
+      assign.fn(err, assign.result || assign.rows);
+      return assign.destroy();
+    }
   });
 
   return true;
@@ -291,10 +294,11 @@ Assignment.readable('each', function each(data, iterator, done) {
 
     iterator(data.shift(), ++index, function iterators(err, row) {
       if (err) return done(err);
+
       mapper.push(row);
       next(data);
     });
-  }(Array.isArray(data) ? data : [ data ]));
+  }(Array.isArray(data) ? data.slice(0) : [ data ]));
 
   return this;
 });
