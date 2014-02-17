@@ -1,6 +1,6 @@
 'use strict';
 
-var slice = Array.prototype.call
+var slice = Array.prototype.slice
   , fuse = require('fusing');
 
 function noop() {
@@ -135,7 +135,7 @@ Assignment.readable('reduce', function setreduce(fn, initial) {
 
   reduce.async = assign._async; // Should we do this async.
   reduce.assignment = 'reduce'; // Process type.
-  assign.flow.push(fn);         // Store.
+  assign.flow.push(reduce);     // Store.
   assign._async = false;        // Reset.
 
   if (arguments.length === 2) {
@@ -188,13 +188,13 @@ Assignment.readable('emits', function setemits(fn) {
    */
   function emits(row, next, done) {
     if (!emits.async) {
-      if (fn(row, push) === false) return done();
-      return next();
+      fn(row, push);
+      return done();
     }
 
     function processed(err, moar) {
       if (err) return next(err);
-      if (moar === false) return done();
+      done();
     }
 
     if (fn.length === 3) fn(row, push, processed);
@@ -203,7 +203,7 @@ Assignment.readable('emits', function setemits(fn) {
 
   emits.async = assign._async; // Should we do this async.
   emits.assignment = 'emits';  // Process type.
-  assign.flow.push(fn);        // Store.
+  assign.flow.push(emits);     // Store.
   assign._async = false;       // Reset.
 
   return assign;
