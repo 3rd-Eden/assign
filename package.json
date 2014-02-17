@@ -1,6 +1,6 @@
 {
   "name": "assign",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "Map/Reduce promise like returned API -- Really not way to properly describe this module..",
   "main": "index.js",
   "scripts": {
@@ -20,8 +20,8 @@
     "fusing": "0.0.x"
   },
   "devDependencies": {
-    "mocha": "~1.17.1",
-    "pre-commit": "0.0.4",
-    "chai": "~1.9.0"
+    "mocha": "1.17.x",
+    "pre-commit": "0.0.x",
+    "chai": "1.9.x"
   }
 }
