@@ -267,11 +267,12 @@ Assignment.readable('write', function write(data, options) {
     });
   }, function finished(err) {
     --assign._tasks;  // Finished another task.
-
     if (err) return assign.destroy(err);
 
-    if (assign._ends && assign._tasks === 0) {
+    if (assign._ends && assign._tasks === 0 && assign.fn) {
       assign.fn(err, assign.result || assign.rows);
+      assign.fn = noop();
+
       return assign.destroy();
     }
   });
@@ -335,7 +336,7 @@ Assignment.readable('each', function each(data, iterator, done) {
  * @api public
  */
 Assignment.readable('finally', function final(fn) {
-  this.fn = fn || this.fn;
+  this.fn = 'function' === typeof fn ? fn : this.fn;
 
   return this;
 });
@@ -347,7 +348,7 @@ Assignment.readable('finally', function final(fn) {
  * @api private
  */
 Assignment.readable('destroy', function destroy(err) {
-  if (err) this.fn(err);
+  if (err && this.fn) this.fn(err);
 
   this.and = this.flow = this.fn = this.rows = null;
 });
