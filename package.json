@@ -1,6 +1,6 @@
 {
   "name": "assign",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Map/Reduce promise like returned API -- Really not way to properly describe this module..",
   "main": "index.js",
   "scripts": {
