@@ -32,6 +32,8 @@ function Assignment(context, fn) {
   writable('result', null);         // Stores the reduced result.
   writable('rows', []);             // Reference to the processed data.
   writable('flow', []);             // Our internal flow/parse structure.
+  writable('_tasks', 0);            // The amount of parallel write tasks we run.
+  writable('_ends', false);         // Should end when all task are completed.
 }
 
 fuse(Assignment, require('stream'), {
@@ -221,6 +223,7 @@ Assignment.readable('emits', function setemits(fn) {
  *
  * @param {Mixed} data The data we need to consume and process.
  * @param {Boolean} options This was the last fragment of data we will receive.
+ * @param {Function} fn Optional callback for when data is processed.
  * @returns {Boolean}
  * @api private
  */
@@ -234,6 +237,17 @@ Assignment.readable('write', function write(data, options) {
   options = options || {};
 
   var assign = this;
+
+  //
+  // Check if we need to end and clean up the assigment once we've completed all
+  // currently running tasks.
+  //
+  if (options.end) this._ends = true;
+
+  //
+  // Starting another processing task.
+  //
+  ++assign._tasks;
 
   assign.each(data, function iterate(row, index, done) {
     assign.length++; // Gives us some intel on how many rows we've processed
@@ -252,9 +266,11 @@ Assignment.readable('write', function write(data, options) {
       done(err);
     });
   }, function finished(err) {
+    --assign._tasks;  // Finished another task.
+
     if (err) return assign.destroy(err);
 
-    if (options.end) {
+    if (assign._ends && assign._tasks === 0) {
       assign.fn(err, assign.result || assign.rows);
       return assign.destroy();
     }
