@@ -258,7 +258,7 @@ Assignment.readable('write', function write(data, options) {
 
     assign.each(assign.flow, function flowing(fn, index, next) {
       if ('skip' in options && options.skip === fn.assignment) return next();
-      if ('slice' in options && options.slice <= index) return next();
+      if ('slice' in options && options.slice >= index) return next();
 
       fn(row, function processed(err, data) {
         if (err) return done(err);
