@@ -175,7 +175,11 @@ Assignment.readable('emits', function setemits(fn) {
    * @api private
    */
   function push() {
-    assign.write(slice.call(arguments, 0), { skip: 'emits' });
+    assign.write(slice.call(arguments, 0), {
+      skip: 'emits',
+      slice: this
+    });
+
     return push;
   }
 
@@ -188,9 +192,9 @@ Assignment.readable('emits', function setemits(fn) {
    * @param {Function} done Fuck it, we're done.
    * @api private
    */
-  function emits(row, next, done) {
+  function emits(row, next, done, index) {
     if (!emits.async) {
-      fn(row, push);
+      fn(row, push.bind(index));
       return done();
     }
 
@@ -199,8 +203,8 @@ Assignment.readable('emits', function setemits(fn) {
       done();
     }
 
-    if (fn.length === 3) fn(row, push, processed);
-    else fn(row, push, assign.length, processed);
+    if (fn.length === 3) fn(row, push.bind(index), processed);
+    else fn(row, push.bind(index), assign.length, processed);
   }
 
   emits.async = assign._async; // Should we do this async.
@@ -253,14 +257,15 @@ Assignment.readable('write', function write(data, options) {
     assign.length++; // Gives us some intel on how many rows we've processed
 
     assign.each(assign.flow, function flowing(fn, index, next) {
-      if (options.skip === fn.assignment) return next();
+      if ('skip' in options && options.skip === fn.assignment) return next();
+      if ('slice' in options && options.slice <= index) return next();
 
       fn(row, function processed(err, data) {
         if (err) return done(err);
         if (arguments.length === 2) row = data;
 
         next();
-      }, done);
+      }, done, index);
     }, function finished(err) {
       assign.rows.push(row);
       done(err);
