@@ -41,6 +41,52 @@ describe('Assign', function () {
     });
   });
 
+  describe('#filter', function () {
+    it('receives the written data', function (done) {
+      var assign = new Assignment(function (err, data) {
+        expect(data).to.be.a('array');
+        expect(data).to.have.length(2);
+        expect(data[0]).to.equal('foo');
+        expect(data[1]).to.equal('foo');
+
+        done(err);
+      });
+
+      assign.filter(function map(data) {
+        return 'foo' === data;
+      });
+
+      assign.write('foo');
+      assign.write('foo');
+      assign.write('bar', {
+        end: true
+      });
+    });
+
+    it('allows multiple filter operations', function (done) {
+      var assign = new Assignment(function (err, data) {
+        expect(data).to.have.length(1);
+        expect(data[0]).to.equal(true);
+
+        done(err);
+      });
+
+      assign.filter(Boolean);
+      assign.filter(function map(data) {
+        return true === data;
+      });
+
+      assign.write(0);
+      assign.write(1);
+      assign.write(false);
+      assign.write(true);
+      assign.write(undefined);
+      assign.write(null, {
+        end: true
+      });
+    });
+  });
+
   describe('#map', function () {
     it('receives the written data', function (done) {
       var assign = new Assignment(function (err, data) {
@@ -63,7 +109,7 @@ describe('Assign', function () {
       });
     });
 
-    it('allows multiple map sequences', function (done) {
+    it('allows multiple map operations', function (done) {
       var assign = new Assignment(function (err, data) {
         expect(data[0]).to.equal('bar');
         expect(data[1]).to.equal('bar');

@@ -7,6 +7,14 @@ function noop() {
   /* You just wasted a second reading this comment, you're welcome */
 }
 
+//
+// Generate a "random" "undefined" variable so we know when we need to ignore
+// a row during an assignment operation.
+//
+var undef = '_assign_undef:'+ [1, 1, 1, 1].map(function generator() {
+  return Math.random().toString(36).substring(2).toUpperCase();
+}).concat([process.pid]).join('-');
+
 /**
  * Data processor. Map/Reduce as promise like api. *buzzword*
  *
@@ -95,6 +103,42 @@ Assignment.readable('map', function setmap(fn, options) {
   map.assignment = 'map';     // Process type.
   assign.flow.push(map);      // Store.
   assign._async = false;      // Reset.
+
+  return assign;
+});
+
+/**
+ * Filter the result out of the set.
+ *
+ * @param {Function} fn
+ * @returns {Assignment}
+ * @api public
+ */
+Assignment.readable('filter', function setfilter(fn) {
+  var assign = this;
+
+  if (!assign.flow) return assign;
+
+  /**
+   * Simple wrapper around the actual filter function that processes the
+   * content.
+   *
+   * @param {Mixed} row The data to process.
+   * @param {Function} next Call the next flow.
+   * @param {Function} done Fuck it, we're done.
+   * @api private
+   */
+  function filter(row, next, done) {
+    if (!filter.async) return next(undefined, fn(row, assign.length));
+
+    if (fn.length === 2) fn(row, next);
+    else fn(row, assign.length, next);
+  }
+
+  filter.async = assign._async;  // Should we do this async.
+  filter.assignment = 'filter';  // Process type.
+  assign.flow.push(filter);      // Store.
+  assign._async = false;         // Reset.
 
   return assign;
 });
@@ -262,12 +306,20 @@ Assignment.readable('write', function write(data, options) {
 
       fn(row, function processed(err, data) {
         if (err) return done(err);
-        if (arguments.length === 2) row = data;
+
+        if ('filter' === fn.assignment) {
+          if (!data) row = undef;
+          return next();
+        }
+
+        if (arguments.length === 2 && row !== undef) {
+          row = data;
+        }
 
         next();
       }, done, index);
     }, function finished(err) {
-      assign.rows.push(row);
+      if (undef !== row) assign.rows.push(row);
       done(err);
     });
   }, function finished(err) {
