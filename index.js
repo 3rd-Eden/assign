@@ -287,7 +287,7 @@ Assignment.readable('write', function write(data, options) {
   var assign = this;
 
   //
-  // Check if we need to end and clean up the assigment once we've completed all
+  // Check if we need to end and clean up the assignment once we've completed all
   // currently running tasks.
   //
   if (options.end) this._ends = true;
