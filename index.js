@@ -352,9 +352,9 @@ Assignment.readable('end', function end(data) {
 /**
  * Asynchrounous forEach. Because iterating is for bad-asses.
  *
- * @param {Array} data
- * @param {Function} iterator
- * @param {Function} completion
+ * @param {Array} data The data to iterate over.
+ * @param {Function} iterator Called for each added data point.
+ * @param {Function} done Completion callback.
  * @api private
  */
 Assignment.readable('each', function each(data, iterator, done) {
@@ -362,6 +362,7 @@ Assignment.readable('each', function each(data, iterator, done) {
     , index = 0;
 
   done = done || noop;
+  if (undefined === data) return done(undefined, mapper);
 
   //
   // Our asynciterator3000, which asyncly iterates an.. Array! It's amazing,
