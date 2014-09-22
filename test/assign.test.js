@@ -41,6 +41,19 @@ describe('Assign', function () {
     });
   });
 
+  describe('#end', function () {
+    it('does not write undefined when called without data', function (next) {
+      var assign = new Assignment(function (err, data) {
+        if (err) return next(err);
+        expect(data).to.have.length(0);
+
+        next();
+      });
+
+      assign.end();
+    });
+  });
+
   describe('#filter', function () {
     it('receives the written data', function (done) {
       var assign = new Assignment(function (err, data) {
