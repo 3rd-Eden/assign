@@ -29,6 +29,15 @@ describe('Assign', function () {
     it('defaults to a `nope` function when none is provided', function () {
       assume(assign.fn).is.a('function');
     });
+
+    it('calls the supplied callback with the supplied context', function (next) {
+      assign.finally(function () {
+        assume(this).equals(obj);
+        next();
+      });
+
+      assign.end();
+    });
   });
 
   describe('.length', function () {
@@ -55,6 +64,34 @@ describe('Assign', function () {
         next();
       });
 
+      assign.end();
+    });
+  });
+
+  describe('#add', function () {
+    it('adds an extra argument', function (next) {
+      var assign = new Assignment(function (err, data, foo) {
+        assume(data).to.have.length(0);
+        assume(foo).equals('foo');
+
+        next();
+      });
+
+      assign.add('foo');
+      assign.end();
+    });
+
+    it('supports multiple arguments', function (next) {
+      var assign = new Assignment(function (err, data, foo, bar) {
+        assume(data).to.have.length(0);
+        assume(foo).equals('foo');
+        assume(bar).equals(111);
+
+        next();
+      });
+
+      assign.add('foo');
+      assign.add(111);
       assign.end();
     });
   });

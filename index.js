@@ -42,6 +42,7 @@ function Assignment(context, fn) {
   writable('flow', []);             // Our internal flow/parse structure.
   writable('_tasks', 0);            // The amount of parallel write tasks we run.
   writable('_ends', false);         // Should end when all task are completed.
+  writable('extras', []);           // Extra arguments for the callback.
 }
 
 fuse(Assignment, require('stream'), {
@@ -327,7 +328,10 @@ Assignment.readable('write', function write(data, options) {
     if (err) return assign.destroy(err);
 
     if (assign._ends && assign._tasks === 0 && assign.fn) {
-      assign.fn(err, assign.result || assign.rows);
+      assign.fn.apply(assign.and, [
+        err,
+        assign.result || assign.rows
+      ].concat(assign.extras));
       assign.fn = noop();
 
       return assign.destroy();
@@ -387,6 +391,18 @@ Assignment.readable('each', function each(data, iterator, done) {
 });
 
 /**
+ * Assign an additional argument for the completion callback.
+ *
+ * @param {Mixed} arg Additional arg.
+ * @returns {Assignment}
+ * @api public
+ */
+Assignment.readable('add', function add(arg) {
+  this.extras.push(arg);
+  return this;
+});
+
+/**
  * Once all operations are done, call this callback.
  *
  * @param {Function} fn The callback that is called once the assignment is done.
@@ -403,12 +419,15 @@ Assignment.readable('finally', function final(fn) {
  * Destroy the assignment. We're done with processing the data.
  *
  * @param {Error} err We're destroyed because we've received an error.
+ * @returns {Boolean}
  * @api private
  */
 Assignment.readable('destroy', function destroy(err) {
+  if (!this.rows) return false;
   if (err && this.fn) this.fn(err);
 
-  this.and = this.flow = this.fn = this.rows = null;
+  this.and = this.flow = this.fn = this.rows = this.extras = null;
+  return true;
 });
 
 //
